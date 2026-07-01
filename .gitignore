@@ -9,5 +9,7 @@ wheels/
 # Virtual environments
 .venv
 
-
+# Brain Stuff
 Output
+niix
+.DS_Store
