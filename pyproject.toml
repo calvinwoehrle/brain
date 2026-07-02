@@ -16,4 +16,8 @@ dependencies = [
     "plotly>=6.8.0",
     "pydicom>=3.0.2",
     "scikit-image>=0.26.0",
+    "simpleitk>=2.4.0",
+    "pyvista>=0.44",
+    "trimesh>=4.4",
+    "hd-bet>=2.0.0",
 ]
