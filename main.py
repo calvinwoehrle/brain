@@ -1,7 +1,6 @@
-import convert
 import BrainBuilder
+import convert
 import mri_utils as mri
-
 
 
 def main():
@@ -13,9 +12,11 @@ def run_conversion():
     """Run the DICOM to NIfTI conversion process."""
     convert.main()
 
+
 def run_brain_extraction():
     """Run the brain extraction process. Generate STL and HTML outputs."""
     BrainBuilder.main()
+
 
 def run_3way_viewer():
     """Run the 3-way viewer for the MPRAGE anatomical scan."""

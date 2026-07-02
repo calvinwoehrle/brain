@@ -23,6 +23,11 @@ dependencies = [
     "pymeshfix>=0.17",
 ]
 
+[dependency-groups]
+dev = [
+    "ruff>=0.9.0",
+]
+
 [project.scripts]
 mri = "main:main"
 convert = "main:run_conversion"
@@ -37,3 +42,20 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 include = ["main.py", "convert.py", "mri_utils.py", "extract.py", "mri.py" , "BrainBuilder.py"]
 
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+extend-exclude = ["old", "output", "bin", "niix", ".venv"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
+
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

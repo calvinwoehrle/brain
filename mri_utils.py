@@ -1,10 +1,8 @@
-
 import json
-from pathlib import Path
 import shutil
 import webbrowser
-
-from typing import cast, Any
+from pathlib import Path
+from typing import Any, cast
 
 import nibabel as nib
 import numpy as np
@@ -42,18 +40,26 @@ def convert_dcm_to_niix(dcm_dir: Path, niix_dir: Path, compress: bool = False) -
 
     # Check if dcm2niix is available
     if not shutil.which("dcm2niix"):
-        raise FileNotFoundError("dcm2niix not found. Please install it and ensure it's in your PATH. Run 'uv install'")
+        raise FileNotFoundError(
+            "dcm2niix not found. Please install it and ensure it's in your PATH. Run 'uv install'"
+        )
 
     # Create the output directory if it doesn't exist
     niix_dir.mkdir(parents=True, exist_ok=True)
 
     # Run dcm2niix command
-    command = ["dcm2niix", "-f", "%d_%s", "-z", "y" if compress else "n", "-o", str(niix_dir), str(dcm_dir)]
+    command = [
+        "dcm2niix",
+        "-f",
+        "%d_%s",
+        "-z",
+        "y" if compress else "n",
+        "-o",
+        str(niix_dir),
+        str(dcm_dir),
+    ]
     print(f"Converting DICOM to NIfTI: {' '.join(command)}")
     subprocess.run(command, check=True)
-
-
-
 
 
 def find_mprage(niix_dir=NIIX_DIR, prefer_no_correction=False) -> list[Path]:
@@ -84,7 +90,9 @@ def find_mprage(niix_dir=NIIX_DIR, prefer_no_correction=False) -> list[Path]:
 
     # check if the niix_dir exists
     if not niix_dir.exists():
-        raise FileNotFoundError(f"Directory {niix_dir} does not exist. Please convert DICOM to NIfTI first using convert_dcm_to_niix()")
+        raise FileNotFoundError(
+            f"Directory {niix_dir} does not exist. Please convert DICOM to NIfTI first using convert_dcm_to_niix()"
+        )
 
     niix_json_sidecars = list(niix_dir.glob("*.json"))
     mprage_json_sidecars: list[Path] = []
@@ -93,11 +101,14 @@ def find_mprage(niix_dir=NIIX_DIR, prefer_no_correction=False) -> list[Path]:
 
     for json_sidecar in niix_json_sidecars:
         # convert json to dict
-        with open(json_sidecar, "r") as f:
+        with open(json_sidecar) as f:
             json_dict = json.load(f)
 
             # Check if "ProtocolName" contains "MPRAGE GRAPPA2"
-            if "ProtocolName" not in json_dict or "MPRAGE GRAPPA2" not in json_dict["ProtocolName"]:
+            if (
+                "ProtocolName" not in json_dict
+                or "MPRAGE GRAPPA2" not in json_dict["ProtocolName"]
+            ):
                 continue
 
             # Select scans based on the desired NonlinearGradientCorrection state
@@ -109,14 +120,16 @@ def find_mprage(niix_dir=NIIX_DIR, prefer_no_correction=False) -> list[Path]:
     if len(mprage_json_sidecars) > 0:
         for mprage_json_sidecar in mprage_json_sidecars:
             print(f"Found MPRAGE JSON sidecar: {mprage_json_sidecar}")
-            
+
             # Check if the corresponding NIfTI file exists
             nii_file = mprage_json_sidecar.with_suffix(".nii")
 
             print(f"Checking for corresponding NIfTI file: {nii_file}")
 
             if not nii_file.exists():
-                raise FileNotFoundError(f"Corresponding NIfTI file not found for {mprage_json_sidecar}")
+                raise FileNotFoundError(
+                    f"Corresponding NIfTI file not found for {mprage_json_sidecar}"
+                )
 
             nii_files.append(nii_file)
 
@@ -126,15 +139,12 @@ def find_mprage(niix_dir=NIIX_DIR, prefer_no_correction=False) -> list[Path]:
     else:
         raise FileNotFoundError(f"No MPRAGE anatomical scan found in {niix_dir}")
 
-    
 
 def get_img() -> tuple[Nifti1Image, np.ndarray[Any], Path]:
-    """Load a NIfTI file and return the image object.
-    """
+    """Load a NIfTI file and return the image object."""
     # Find the MPRAGE anatomical scan in the niix directory.
     mprage_nii_files = find_mprage()
     MPRAGE = mprage_nii_files[0]
-
 
     # Configure the output directory for STL files.
     STL_OUT_DIR.mkdir(exist_ok=True)
@@ -153,10 +163,10 @@ def get_img() -> tuple[Nifti1Image, np.ndarray[Any], Path]:
 
     return img, data, MPRAGE
 
+
 def generate_3way_viewer() -> Path:
-    """Generate an interactive 3-way viewer for the MPRAGE anatomical scan.
-    """
-    
+    """Generate an interactive 3-way viewer for the MPRAGE anatomical scan."""
+
     img, data, MPRAGE = get_img()
 
     # Robust intensity window so faint tissue isn't washed out by a few bright voxels.
@@ -184,11 +194,11 @@ def generate_3way_viewer() -> Path:
     webbrowser.open_new_tab(output_path.resolve().as_uri())
 
 
-
 def main():
     niix_dir = Path("niix")
     mprage_nii_files = find_mprage(niix_dir)
     print(f"MPRAGE NIfTI files: {mprage_nii_files}")
+
 
 if __name__ == "__main__":
     main()

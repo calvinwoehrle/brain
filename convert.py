@@ -5,6 +5,7 @@ from tkinter import Tk, filedialog
 
 from mri_utils import convert_dcm_to_niix
 
+
 def get_user_input() -> Path:
     """Prompt the user to pick the DICOM input directory.
 
@@ -21,7 +22,9 @@ def get_user_input() -> Path:
     root = Tk()
     root.withdraw()
 
-    dcm_dir = filedialog.askdirectory(title="Select the DICOM directory", initialdir=Path.home() / "Downloads")
+    dcm_dir = filedialog.askdirectory(
+        title="Select the DICOM directory", initialdir=Path.home() / "Downloads"
+    )
     if not dcm_dir:
         root.destroy()
         raise ValueError("No DICOM directory selected.")
@@ -39,10 +42,13 @@ def main():
         niix_dir = Path("niix")
 
         convert_dcm_to_niix(dcm_dir, niix_dir)
-        
-        print(f"Successfully converted DICOM files from {dcm_dir} to NIfTI in {niix_dir}.")
+
+        print(
+            f"Successfully converted DICOM files from {dcm_dir} to NIfTI in {niix_dir}."
+        )
     except Exception as e:
         print(f"Error: {e}")
+
 
 if __name__ == "__main__":
     main()

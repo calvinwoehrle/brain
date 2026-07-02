@@ -1,8 +1,8 @@
 # %% [markdown]
 # # Generate a STL from MPRAGE Anatomical Brain data
-# 
+#
 # Calvin Woehrle
-# 
+#
 # July 1, 2026
 
 # %%
@@ -12,23 +12,22 @@ import nibabel as nib
 import numpy as np
 from nibabel.nifti1 import Nifti1Image
 
-
 import mri_utils as mri
 
-def main():
 
+def main():
 
     img, data, MPRAGE = mri.get_img()
 
     # %% [markdown]
     # ## Intensity uniformity (N4 bias-field correction)
-    # 
+    #
     # MRI surface coils make one side of the head brighter than the other, which
     # breaks the simple percentile thresholds used below. **SimpleITK's N4** estimates
     # and divides out that smooth bias field so a single threshold behaves
     # consistently across the whole volume. The corrected image is saved as a
     # `.nii.gz` and reloaded so the rest of the notebook works in one voxel space.
-    # 
+    #
 
     # %%
     import SimpleITK as sitk
@@ -37,8 +36,9 @@ def main():
 
     MPRAGE_N4 = mri.BIN_DIR / "mprage_n4.nii.gz"
 
-
-    def n4_bias_field_correct(in_path, out_path, shrink_factor=4, iters=(50, 50, 50, 50)):
+    def n4_bias_field_correct(
+        in_path, out_path, shrink_factor=4, iters=(50, 50, 50, 50)
+    ):
         """Estimate and remove the low-frequency intensity bias field (SimpleITK N4)."""
         img = sitk.ReadImage(str(in_path), sitk.sitkFloat32)
         mask = sitk.OtsuThreshold(img, 0, 1, 200)
@@ -56,7 +56,6 @@ def main():
         sitk.WriteImage(corrected, str(out_path))
         return out_path
 
-
     n4_bias_field_correct(MPRAGE, MPRAGE_N4)
 
     # Reload the corrected volume so all downstream steps share one voxel space.
@@ -64,19 +63,20 @@ def main():
     data_n4 = np.asarray(img_n4.dataobj)
     zooms = img_n4.header.get_zooms()
 
-    print(f"N4-corrected: {img_n4.shape}  voxel {tuple(round(float(z), 2) for z in zooms[:3])} mm")
+    print(
+        f"N4-corrected: {img_n4.shape}  voxel {tuple(round(float(z), 2) for z in zooms[:3])} mm"
+    )
     print(f"Intensity:    min={data_n4.min():.0f}  max={data_n4.max():.0f}")
-
 
     # %% [markdown]
     # ## Brain extraction with HD-BET
-    # 
+    #
     # The erode/dilate trick previously used to strip the skull is fragile. **HD-BET**
-    # (MIC-DKFZ) is a maintained neural-network brain-extraction tool that produces an
+    # (MIC-DKFZ) is a neural-network brain-extraction tool that produces an
     # accurate brain mask across MRI contrasts. It runs on the N4-corrected image and
     # writes a binary mask, which we load as `brain_mask`. The first run downloads the
     # model weights.
-    # 
+    #
 
     # %%
     import shutil
@@ -84,7 +84,6 @@ def main():
 
     BRAIN_OUT = mri.BIN_DIR / "mprage_brain.nii.gz"
     BRAIN_MASK = mri.BIN_DIR / "mprage_brain_bet.nii.gz"  # cached HD-BET result
-
 
     def run_hd_bet(in_path, out_path, mask_path, device="cpu", force=False):
         """Run HD-BET brain extraction, caching the mask so it only runs once.
@@ -100,7 +99,16 @@ def main():
         if hd_bet is None:
             raise RuntimeError("hd-bet CLI not found; run `uv sync` to install it.")
 
-        cmd = [hd_bet, "-i", str(in_path), "-o", str(out_path), "-device", device, "--save_bet_mask"]
+        cmd = [
+            hd_bet,
+            "-i",
+            str(in_path),
+            "-o",
+            str(out_path),
+            "-device",
+            device,
+            "--save_bet_mask",
+        ]
         if device == "cpu" or device == "mps":
             cmd.append("--disable_tta")  # much faster on CPU, minimal quality loss
         subprocess.run(cmd, check=True)
@@ -112,11 +120,9 @@ def main():
             raise FileNotFoundError("HD-BET did not produce a mask file.")
         return masks[0]
 
-
     mask_path = run_hd_bet(MPRAGE_N4, BRAIN_OUT, BRAIN_MASK, device="mps")
     brain_mask = np.asarray(nib.load(mask_path).dataobj) > 0
     print(f"Brain mask: {int(brain_mask.sum()):,} voxels  from {mask_path.name}")
-
 
     # %%
     import pymeshfix
@@ -126,7 +132,6 @@ def main():
     # Use spacing to consider original voxel size when generating the mesh.
     spacing = tuple(float(z) for z in zooms[:3])
 
-
     def largest_component(mask: np.ndarray) -> np.ndarray:
         """Keep only the largest connected component of a boolean mask."""
         labels, n = ndimage.label(mask)
@@ -135,8 +140,9 @@ def main():
             mask = labels == largest
         return mask
 
-
-    def cap_base(mask: np.ndarray, axis: int = 2, trim: int = 3, pad: int = 2) -> np.ndarray:
+    def cap_base(
+        mask: np.ndarray, axis: int = 2, trim: int = 3, pad: int = 2
+    ) -> np.ndarray:
         """Flatten the neck opening into a solid base so the mesh is watertight.
 
         Cuts off the ragged bottom ``trim`` slices along the inferior-superior
@@ -151,7 +157,6 @@ def main():
         sl[axis] = slice(0, base)
         m[tuple(sl)] = False  # remove everything below the base plane
         return np.pad(m, pad, mode="constant", constant_values=False)
-
 
     def mesh_from_mask(
         mask: np.ndarray,
@@ -187,7 +192,6 @@ def main():
 
         return verts, faces
 
-
     # ============ Whole Head Mesh Extraction ============
     # Threshold head vs. air (on the N4-corrected volume), fill interior holes,
     # then keep the largest connected blob.
@@ -200,8 +204,9 @@ def main():
     head_mask_capped = cap_base(head_mask, axis=2, trim=3, pad=2)
 
     verts, faces = mesh_from_mask(head_mask_capped, mask_sigma=0.8, reduction=0.6)
-    print(f"Head:  {len(verts):,} verts, {len(faces):,} tris  (thr={head_thr:.0f}, capped base)")
-
+    print(
+        f"Head:  {len(verts):,} verts, {len(faces):,} tris  (thr={head_thr:.0f}, capped base)"
+    )
 
     # ============ Brain Mesh Extraction ============
     # Use the HD-BET neural-network brain mask instead of erode/dilate heuristics.
@@ -211,27 +216,27 @@ def main():
     verts_brain, faces_brain = mesh_from_mask(brain_mask, mask_sigma=1.0, reduction=0.5)
     print(f"Brain: {len(verts_brain):,} verts, {len(faces_brain):,} tris  (HD-BET)")
 
-
     # ============ Skull Mesh Extraction ============
     # Cortical bone is dark on T1, so segment the skull geometrically: peel the
     # outer scalp off the head, then remove the (slightly padded) brain region.
     # What remains is the bony shell between scalp and brain.
-    scalp_peeled = ndimage.binary_erosion(head_mask, iterations=4)   # drop outer scalp
-    brain_padded = ndimage.binary_dilation(brain_mask, iterations=2)  # small safety margin
+    scalp_peeled = ndimage.binary_erosion(head_mask, iterations=4)  # drop outer scalp
+    brain_padded = ndimage.binary_dilation(
+        brain_mask, iterations=2
+    )  # small safety margin
     skull_mask = scalp_peeled & ~brain_padded
     skull_mask = largest_component(skull_mask)
 
     verts_skull, faces_skull = mesh_from_mask(skull_mask, mask_sigma=0.8, reduction=0.6)
     print(f"Skull: {len(verts_skull):,} verts, {len(faces_skull):,} tris")
 
-
     # %% [markdown]
     # ## Interactive 3D head model
-    # 
+    #
     # The whole-head surface above is a static render. Here the same marching-cubes
     # mesh (`verts`, `faces`) is drawn with **Plotly**, so you can **click-drag to
     # rotate**, scroll to zoom, and right-drag to pan the model in real time.
-    # 
+    #
 
     # %%
     import plotly.graph_objects as go
@@ -241,8 +246,12 @@ def main():
     i, j, k = faces.T
 
     head = go.Mesh3d(
-        x=x, y=y, z=z,
-        i=i, j=j, k=k,
+        x=x,
+        y=y,
+        z=z,
+        i=i,
+        j=j,
+        k=k,
         color="rgb(217, 191, 179)",
         opacity=1.0,
         lighting=dict(ambient=0.45, diffuse=0.9, specular=0.3, roughness=0.5),
@@ -272,18 +281,19 @@ def main():
 
     # %% [markdown]
     # ## Export to STL
-    # 
+    #
     # The marching-cubes mesh (`verts`, `faces`) is already a watertight triangle
     # surface, so it can be written directly to an **STL** file for 3D printing or
     # viewing in any CAD/mesh tool. Coordinates are in millimetres, so the print
     # comes out life-size.
-    # 
+    #
 
     # %%
     import trimesh
 
-
-    def export_stl(verts, faces, path=mri.STL_OUT_DIR, header="MRI model - Calvin Woehrle"):
+    def export_stl(
+        verts, faces, path=mri.STL_OUT_DIR, header="MRI model - Calvin Woehrle"
+    ):
         """Build, repair and validate a triangle mesh, then write a binary STL (mm)."""
         mesh = trimesh.Trimesh(vertices=verts, faces=faces, process=True)
 
@@ -300,7 +310,6 @@ def main():
     # %%
     # ============== Outputs ================
 
-
     # ============ Export all three meshes to STL ============
     # Reuses export_stl (trimesh). Files land in STL_OUT_DIR, mm units.
     meshes = {
@@ -316,7 +325,6 @@ def main():
             f"Wrote {out_path}: {len(mesh.faces):,} triangles, "
             f"{len(mesh.vertices):,} vertices, watertight={mesh.is_watertight}"
         )
-
 
 
 if __name__ == "__main__":
