@@ -121,7 +121,7 @@ def main():
         return masks[0]
 
     mask_path = run_hd_bet(MPRAGE_N4, BRAIN_OUT, BRAIN_MASK, device="mps")
-    brain_mask = np.asarray(nib.load(mask_path).dataobj) > 0
+    brain_mask = np.asarray(cast(Nifti1Image, nib.load(mask_path)).dataobj) > 0
     print(f"Brain mask: {int(brain_mask.sum()):,} voxels  from {mask_path.name}")
 
     # %%

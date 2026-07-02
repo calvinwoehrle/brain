@@ -164,8 +164,10 @@ def get_img() -> tuple[Nifti1Image, np.ndarray[Any], Path]:
     return img, data, MPRAGE
 
 
-def generate_3way_viewer() -> Path:
-    """Generate an interactive 3-way viewer for the MPRAGE anatomical scan."""
+def generate_3way_viewer() -> None:
+    """Generate an interactive 3-way viewer for the MPRAGE anatomical scan.
+    Saves a standalone HTML file in the output directory and opens in default browser.
+    """
 
     img, data, MPRAGE = get_img()
 

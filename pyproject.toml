@@ -26,6 +26,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "ruff>=0.9.0",
+    "ty>=0.0.56",
 ]
 
 [project.scripts]
@@ -55,6 +56,9 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 docstring-code-format = true
 docstring-code-line-length = "dynamic"
+
+[tool.ty.src]
+exclude = ["old"]
 
 
 [tool.ruff.lint]
