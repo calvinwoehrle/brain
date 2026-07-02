@@ -10,6 +10,8 @@ wheels/
 .venv
 
 # Brain Stuff
-Output
+bin
 niix
+
+output
 .DS_Store

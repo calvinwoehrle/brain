@@ -4,6 +4,21 @@ from pathlib import Path
 import shutil
 
 
+# Default directories
+NIIX_DIR = Path("niix")
+
+BIN_DIR = Path("bin")
+
+OUTPUT_DIR = Path("output")
+STL_OUT_DIR = OUTPUT_DIR / "STL"
+HTML_OUT_DIR = OUTPUT_DIR / "HTML"
+
+BIN_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR.mkdir(exist_ok=True)
+STL_OUT_DIR.mkdir(exist_ok=True)
+HTML_OUT_DIR.mkdir(exist_ok=True)
+
+
 def convert_dcm_to_niix(dcm_dir: Path, niix_dir: Path, compress: bool = False) -> None:
     """Convert DICOM files to NIfTI format using dcm2niix.
 
@@ -34,7 +49,7 @@ def convert_dcm_to_niix(dcm_dir: Path, niix_dir: Path, compress: bool = False) -
 
 
 
-def find_mprage(niix_dir: Path, prefer_no_correction=False) -> list[Path]:
+def find_mprage(niix_dir=NIIX_DIR, prefer_no_correction=False) -> list[Path]:
     """Find MPRAGE anatomical scans in a directory of NIfTI conversions.
 
     Scans every JSON sidecar in ``niix_dir`` and selects those whose
@@ -46,7 +61,7 @@ def find_mprage(niix_dir: Path, prefer_no_correction=False) -> list[Path]:
 
     Args:
         niix_dir: Directory containing the ``.json`` sidecars and their
-            matching ``.nii`` files.
+            matching ``.nii`` files. Defaults to ``niix`` in the current working directory.
         prefer_no_correction: If ``True``, select MPRAGE scans that do not
             have nonlinear gradient correction applied instead of those that
             do. Defaults to ``False``.

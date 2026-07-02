@@ -8,7 +8,7 @@ This project uses UV with python 3.14
 
 Make sure you have UV and python installed.  See https://uv.run/docs/installation for instructions on how to install UV.
 
-After, clone this repository and navigate to the project directory and run `uv install`
+After, clone this repository and navigate to the project directory and run `uv sync` to install the dependencies.
 
 
 ## Convert from dcm to Niix
