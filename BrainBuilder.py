@@ -16,25 +16,9 @@ from nibabel.nifti1 import Nifti1Image
 import mri_utils as mri
 
 def main():
-    # Find the MPRAGE anatomical scan in the niix directory.
-    mprage_nii_files = mri.find_mprage()
-    MPRAGE = mprage_nii_files[0]
 
 
-    # Configure the output directory for STL files.
-    mri.STL_OUT_DIR.mkdir(exist_ok=True)
-
-    img = cast(Nifti1Image, nib.load(MPRAGE))
-
-    data = np.asarray(img.dataobj)  # shape (X, Y, Z) -- a single 3D volume
-
-    zooms = img.header.get_zooms()
-
-    print(f"File:        {MPRAGE.name}")
-    print(f"Shape:       {img.shape}  (X, Y, Z)")
-    print(f"Voxel size:  {tuple(round(z, 2) for z in zooms[:3])} mm")
-    print(f"Orientation: {''.join(nib.aff2axcodes(img.affine))}")
-    print(f"Intensity:   min={data.min():.0f}  max={data.max():.0f}")
+    img, data, MPRAGE = mri.get_img()
 
     # %% [markdown]
     # ## Intensity uniformity (N4 bias-field correction)
