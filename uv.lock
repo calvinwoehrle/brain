@@ -1396,7 +1396,7 @@ wheels = [
 [[package]]
 name = "mri"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "dcm2niix" },
     { name = "hd-bet" },
