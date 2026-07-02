@@ -2,7 +2,14 @@
 import json
 from pathlib import Path
 import shutil
+import webbrowser
 
+from typing import cast, Any
+
+import nibabel as nib
+import numpy as np
+from nibabel.nifti1 import Nifti1Image
+from nilearn import plotting
 
 # Default directories
 NIIX_DIR = Path("niix")
@@ -120,6 +127,64 @@ def find_mprage(niix_dir=NIIX_DIR, prefer_no_correction=False) -> list[Path]:
         raise FileNotFoundError(f"No MPRAGE anatomical scan found in {niix_dir}")
 
     
+
+def get_img() -> tuple[Nifti1Image, np.ndarray[Any], Path]:
+    """Load a NIfTI file and return the image object.
+    """
+    # Find the MPRAGE anatomical scan in the niix directory.
+    mprage_nii_files = find_mprage()
+    MPRAGE = mprage_nii_files[0]
+
+
+    # Configure the output directory for STL files.
+    STL_OUT_DIR.mkdir(exist_ok=True)
+
+    img = cast(Nifti1Image, nib.load(MPRAGE))
+
+    data = np.asarray(img.dataobj)  # shape (X, Y, Z) -- a single 3D volume
+
+    zooms = img.header.get_zooms()
+
+    print(f"File:        {MPRAGE.name}")
+    print(f"Shape:       {img.shape}  (X, Y, Z)")
+    print(f"Voxel size:  {tuple(round(z, 2) for z in zooms[:3])} mm")
+    print(f"Orientation: {''.join(nib.aff2axcodes(img.affine))}")
+    print(f"Intensity:   min={data.min():.0f}  max={data.max():.0f}")
+
+    return img, data, MPRAGE
+
+def generate_3way_viewer() -> Path:
+    """Generate an interactive 3-way viewer for the MPRAGE anatomical scan.
+    """
+    
+    img, data, MPRAGE = get_img()
+
+    # Robust intensity window so faint tissue isn't washed out by a few bright voxels.
+    vmin, vmax = np.percentile(data[data > 0], [2, 98])
+
+    # Draggable ortho viewer of the T1 volume. Use bg_img=None so the MPRAGE itself
+    # is the background, and match the robust intensity window from earlier.
+    html_view = plotting.view_img(
+        img,
+        bg_img=None,
+        cmap="gray",
+        symmetric_cmap=False,
+        vmin=vmin,
+        vmax=vmax,
+        black_bg=True,
+        title="Calvin Woehrle - MPRAGE interactive viewer",
+    )
+
+    # Optionally save a standalone HTML file you can open in any browser:
+    output_path = HTML_OUT_DIR / "mprage_viewer.html"
+    html_view.save_as_html(output_path)
+
+    # Open in the default browser using an absolute file:// URI so the browser
+    # can resolve the path regardless of the current working directory.
+    webbrowser.open_new_tab(output_path.resolve().as_uri())
+
+
+
 def main():
     niix_dir = Path("niix")
     mprage_nii_files = find_mprage(niix_dir)

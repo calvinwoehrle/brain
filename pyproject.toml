@@ -27,6 +27,7 @@ dependencies = [
 mri = "main:main"
 convert = "main:run_conversion"
 brain = "main:run_brain_extraction"
+3way = "main:run_3way_viewer"
 
 
 [build-system]
