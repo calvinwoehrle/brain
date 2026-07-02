@@ -20,4 +20,5 @@ dependencies = [
     "pyvista>=0.44",
     "trimesh>=4.4",
     "hd-bet>=2.0.0",
+    "pymeshfix>=0.17",
 ]
