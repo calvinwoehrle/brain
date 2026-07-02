@@ -1,8 +1,23 @@
-# Calvin Woehrle's Brain
+# Calvin Woehrle - Brain
+
+This is a personal project visualize my brain.  I love data and it's fun to know for sure my brain isn't smooth
+
+## Install
+
+This project uses UV with python 3.14
+
+Make sure you have UV and python installed.  See https://uv.run/docs/installation for instructions on how to install UV.
+
+After, clone this repository and navigate to the project directory and run `uv sync` to install the dependencies.
 
 
 ## Convert from dcm to Niix
 
+Unzip the DICOM files and place them in a folder.  Then run the following command to convert the DICOM files to NIfTI format:
+
 ```shell
-dcm2niix -o niix -f "%d_%s" <PATH_TO_DICOM_FOLDER>
+uv run convert
 ```
+
+## Processing
+
