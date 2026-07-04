@@ -4,5 +4,6 @@
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": { "source.organizeImports.ruff": "explicit" }
   },
-  "ty.enable": true
+  "ty.enable": true,
+  "ruff.format.backend": "uv"
 }
