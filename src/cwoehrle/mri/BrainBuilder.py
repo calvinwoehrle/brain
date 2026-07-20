@@ -21,7 +21,7 @@ import trimesh
 from nibabel.nifti1 import Nifti1Image
 from scipy import ndimage
 
-import mri_utils as mri
+from . import mri_utils as mri
 
 logger = logging.getLogger(__name__)
 

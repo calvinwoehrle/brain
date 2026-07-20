@@ -65,5 +65,6 @@ The viewer is saved to `output/HTML/mprage_viewer.html` and opened automatically
 ## Logging
 
 All scripts use Python's `logging` module. Progress messages are printed at
-`INFO` level by default; the level can be adjusted via `mri_utils.setup_logging()`.
+`INFO` level by default; the level can be adjusted via
+`cwoehrle.mri.mri_utils.setup_logging()`.
 

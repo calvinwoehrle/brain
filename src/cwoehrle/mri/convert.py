@@ -3,7 +3,7 @@
 import logging
 from pathlib import Path
 
-from mri_utils import convert_dcm_to_niix, get_user_input, setup_logging
+from .mri_utils import convert_dcm_to_niix, get_user_input, setup_logging
 
 logger = logging.getLogger(__name__)
 

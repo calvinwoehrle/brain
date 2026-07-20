@@ -1,8 +1,7 @@
 import logging
 
-import BrainBuilder
-import convert
-import mri_utils as mri
+from . import BrainBuilder, convert
+from . import mri_utils as mri
 
 logger = logging.getLogger(__name__)
 
