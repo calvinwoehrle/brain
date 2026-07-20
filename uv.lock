@@ -488,30 +488,31 @@ nvtx = [
 
 [[package]]
 name = "cwoehrle-brain"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "dcm2niix" },
     { name = "hd-bet" },
-    { name = "ipykernel" },
-    { name = "ipywidgets" },
-    { name = "jupyter" },
-    { name = "matplotlib" },
     { name = "nibabel" },
     { name = "nilearn" },
-    { name = "pandas" },
     { name = "plotly" },
-    { name = "pydicom" },
     { name = "pymeshfix" },
     { name = "pyvista" },
-    { name = "scikit-image" },
+    { name = "scipy" },
     { name = "simpleitk" },
     { name = "trimesh" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "ipykernel" },
+    { name = "ipywidgets" },
+    { name = "jupyter" },
+    { name = "matplotlib" },
+    { name = "pandas" },
+    { name = "pydicom" },
     { name = "ruff" },
+    { name = "scikit-image" },
     { name = "ty" },
 ]
 
@@ -519,25 +520,26 @@ dev = [
 requires-dist = [
     { name = "dcm2niix", specifier = ">=1.0.20260416" },
     { name = "hd-bet", specifier = ">=2.0.0" },
-    { name = "ipykernel", specifier = ">=7.3.0" },
-    { name = "ipywidgets", specifier = ">=8.1.8" },
-    { name = "jupyter", specifier = ">=1.1.1" },
-    { name = "matplotlib", specifier = ">=3.11.0" },
     { name = "nibabel", specifier = ">=5.4.2" },
     { name = "nilearn", specifier = ">=0.13.1" },
-    { name = "pandas", specifier = ">=3.0.3" },
     { name = "plotly", specifier = ">=6.8.0" },
-    { name = "pydicom", specifier = ">=3.0.2" },
     { name = "pymeshfix", specifier = ">=0.17" },
     { name = "pyvista", specifier = ">=0.44" },
-    { name = "scikit-image", specifier = ">=0.26.0" },
+    { name = "scipy", specifier = ">=1.16.0" },
     { name = "simpleitk", specifier = ">=2.4.0" },
     { name = "trimesh", specifier = ">=4.4" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "ipykernel", specifier = ">=7.3.0" },
+    { name = "ipywidgets", specifier = ">=8.1.8" },
+    { name = "jupyter", specifier = ">=1.1.1" },
+    { name = "matplotlib", specifier = ">=3.11.0" },
+    { name = "pandas", specifier = ">=3.0.3" },
+    { name = "pydicom", specifier = ">=3.0.2" },
     { name = "ruff", specifier = ">=0.9.0" },
+    { name = "scikit-image", specifier = ">=0.26.0" },
     { name = "ty", specifier = ">=0.0.56" },
 ]
 

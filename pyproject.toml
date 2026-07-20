@@ -1,6 +1,6 @@
 [project]
 name = "cwoehrle.brain"
-version = "1.0.1"
+version = "1.0.2"
 description = "MRI processing and 3D brain mesh visualization from DICOM/NIfTI scans"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -12,16 +12,10 @@ classifiers = [
 ]
 dependencies = [
     "dcm2niix>=1.0.20260416",
-    "ipykernel>=7.3.0",
-    "ipywidgets>=8.1.8",
-    "jupyter>=1.1.1",
-    "matplotlib>=3.11.0",
     "nibabel>=5.4.2",
     "nilearn>=0.13.1",
-    "pandas>=3.0.3",
     "plotly>=6.8.0",
-    "pydicom>=3.0.2",
-    "scikit-image>=0.26.0",
+    "scipy>=1.16.0",
     "simpleitk>=2.4.0",
     "pyvista>=0.44",
     "trimesh>=4.4",
@@ -33,6 +27,13 @@ dependencies = [
 dev = [
     "ruff>=0.9.0",
     "ty>=0.0.56",
+    "ipykernel>=7.3.0",
+    "ipywidgets>=8.1.8",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.11.0",
+    "pandas>=3.0.3",
+    "pydicom>=3.0.2",
+    "scikit-image>=0.26.0",
 ]
 
 [project.scripts]
