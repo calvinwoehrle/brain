@@ -1,11 +1,16 @@
+import logging
+
 import BrainBuilder
 import convert
 import mri_utils as mri
 
+logger = logging.getLogger(__name__)
+
 
 def main():
     """Entry point for the MRI project."""
-    print("Hello Calvin! Welcome to the MRI project.")
+    mri.setup_logging()
+    logger.info("Hello Calvin! Welcome to the MRI project.")
 
 
 def run_conversion():

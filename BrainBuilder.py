@@ -6,16 +6,30 @@
 # July 1, 2026
 
 # %%
+import logging
+import shutil
+import subprocess
 from typing import cast
 
 import nibabel as nib
 import numpy as np
+import plotly.graph_objects as go
+import pymeshfix
+import pyvista as pv
+import SimpleITK as sitk
+import trimesh
 from nibabel.nifti1 import Nifti1Image
+from scipy import ndimage
 
 import mri_utils as mri
 
+logger = logging.getLogger(__name__)
+
 
 def main():
+
+    mri.setup_logging()
+    mri.ensure_dirs(mri.BIN_DIR, mri.STL_OUT_DIR, mri.HTML_OUT_DIR)
 
     img, data, MPRAGE = mri.get_img()
 
@@ -30,10 +44,6 @@ def main():
     #
 
     # %%
-    import SimpleITK as sitk
-
-    mri.BIN_DIR.mkdir(exist_ok=True)
-
     MPRAGE_N4 = mri.BIN_DIR / "mprage_n4.nii.gz"
 
     def n4_bias_field_correct(
@@ -63,10 +73,12 @@ def main():
     data_n4 = np.asarray(img_n4.dataobj)
     zooms = img_n4.header.get_zooms()
 
-    print(
-        f"N4-corrected: {img_n4.shape}  voxel {tuple(round(float(z), 2) for z in zooms[:3])} mm"
+    logger.info(
+        "N4-corrected: %s  voxel %s mm",
+        img_n4.shape,
+        tuple(round(float(z), 2) for z in zooms[:3]),
     )
-    print(f"Intensity:    min={data_n4.min():.0f}  max={data_n4.max():.0f}")
+    logger.info("Intensity:    min=%.0f  max=%.0f", data_n4.min(), data_n4.max())
 
     # %% [markdown]
     # ## Brain extraction with HD-BET
@@ -79,9 +91,6 @@ def main():
     #
 
     # %%
-    import shutil
-    import subprocess
-
     BRAIN_OUT = mri.BIN_DIR / "mprage_brain.nii.gz"
     BRAIN_MASK = mri.BIN_DIR / "mprage_brain_bet.nii.gz"  # cached HD-BET result
 
@@ -92,7 +101,7 @@ def main():
         ``force=True`` or delete the file to recompute.
         """
         if mask_path.exists() and not force:
-            print(f"Using cached brain mask: {mask_path}")
+            logger.info("Using cached brain mask: %s", mask_path)
             return mask_path
 
         hd_bet = shutil.which("hd-bet")
@@ -122,13 +131,11 @@ def main():
 
     mask_path = run_hd_bet(MPRAGE_N4, BRAIN_OUT, BRAIN_MASK, device="mps")
     brain_mask = np.asarray(cast(Nifti1Image, nib.load(mask_path)).dataobj) > 0
-    print(f"Brain mask: {int(brain_mask.sum()):,} voxels  from {mask_path.name}")
+    logger.info(
+        "Brain mask: %s voxels  from %s", f"{int(brain_mask.sum()):,}", mask_path.name
+    )
 
     # %%
-    import pymeshfix
-    import pyvista as pv
-    from scipy import ndimage
-
     # Use spacing to consider original voxel size when generating the mesh.
     spacing = tuple(float(z) for z in zooms[:3])
 
@@ -204,8 +211,11 @@ def main():
     head_mask_capped = cap_base(head_mask, axis=2, trim=3, pad=2)
 
     verts, faces = mesh_from_mask(head_mask_capped, mask_sigma=0.8, reduction=0.6)
-    print(
-        f"Head:  {len(verts):,} verts, {len(faces):,} tris  (thr={head_thr:.0f}, capped base)"
+    logger.info(
+        "Head:  %s verts, %s tris  (thr=%.0f, capped base)",
+        f"{len(verts):,}",
+        f"{len(faces):,}",
+        head_thr,
     )
 
     # ============ Brain Mesh Extraction ============
@@ -214,7 +224,11 @@ def main():
     brain_mask = ndimage.binary_fill_holes(brain_mask)
 
     verts_brain, faces_brain = mesh_from_mask(brain_mask, mask_sigma=1.0, reduction=0.5)
-    print(f"Brain: {len(verts_brain):,} verts, {len(faces_brain):,} tris  (HD-BET)")
+    logger.info(
+        "Brain: %s verts, %s tris  (HD-BET)",
+        f"{len(verts_brain):,}",
+        f"{len(faces_brain):,}",
+    )
 
     # ============ Skull Mesh Extraction ============
     # Cortical bone is dark on T1, so segment the skull geometrically: peel the
@@ -228,7 +242,11 @@ def main():
     skull_mask = largest_component(skull_mask)
 
     verts_skull, faces_skull = mesh_from_mask(skull_mask, mask_sigma=0.8, reduction=0.6)
-    print(f"Skull: {len(verts_skull):,} verts, {len(faces_skull):,} tris")
+    logger.info(
+        "Skull: %s verts, %s tris",
+        f"{len(verts_skull):,}",
+        f"{len(faces_skull):,}",
+    )
 
     # %% [markdown]
     # ## Interactive 3D head model
@@ -239,8 +257,6 @@ def main():
     #
 
     # %%
-    import plotly.graph_objects as go
-
     # Reuse the whole-head mesh from the marching-cubes cell above.
     x, y, z = verts.T
     i, j, k = faces.T
@@ -289,12 +305,12 @@ def main():
     #
 
     # %%
-    import trimesh
+    def export_stl(verts, faces, path, header="MRI model - Calvin Woehrle"):
+        """Build, repair and validate a triangle mesh, then write a binary STL (mm).
 
-    def export_stl(
-        verts, faces, path=mri.STL_OUT_DIR, header="MRI model - Calvin Woehrle"
-    ):
-        """Build, repair and validate a triangle mesh, then write a binary STL (mm)."""
+        Args:
+            path: Destination ``.stl`` file path (not a directory).
+        """
         mesh = trimesh.Trimesh(vertices=verts, faces=faces, process=True)
 
         # Clean up marching-cubes artefacts for a print-ready shell.
@@ -321,9 +337,12 @@ def main():
     for name, (v, f) in meshes.items():
         out_path = mri.STL_OUT_DIR / f"{name}.stl"
         mesh = export_stl(v, f, path=out_path)
-        print(
-            f"Wrote {out_path}: {len(mesh.faces):,} triangles, "
-            f"{len(mesh.vertices):,} vertices, watertight={mesh.is_watertight}"
+        logger.info(
+            "Wrote %s: %s triangles, %s vertices, watertight=%s",
+            out_path,
+            f"{len(mesh.faces):,}",
+            f"{len(mesh.vertices):,}",
+            mesh.is_watertight,
         )
 
 

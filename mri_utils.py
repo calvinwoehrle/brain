@@ -1,14 +1,34 @@
 import json
+import logging
 import shutil
+import subprocess
 import webbrowser
 from pathlib import Path
 from tkinter import Tk, filedialog
-from typing import Any, cast
+from typing import cast
 
 import nibabel as nib
 import numpy as np
 from nibabel.nifti1 import Nifti1Image
 from nilearn import plotting
+
+logger = logging.getLogger(__name__)
+
+
+def setup_logging(level: int = logging.INFO) -> None:
+    """Configure root logging with a simple, timestamped format.
+
+    Safe to call multiple times; only configures handlers once.
+
+    Args:
+        level: The minimum logging level to emit. Defaults to ``logging.INFO``.
+    """
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
 
 # Default directories
 NIIX_DIR = Path("niix")
@@ -19,10 +39,11 @@ OUTPUT_DIR = Path("output")
 STL_OUT_DIR = OUTPUT_DIR / "STL"
 HTML_OUT_DIR = OUTPUT_DIR / "HTML"
 
-BIN_DIR.mkdir(exist_ok=True)
-OUTPUT_DIR.mkdir(exist_ok=True)
-STL_OUT_DIR.mkdir(exist_ok=True)
-HTML_OUT_DIR.mkdir(exist_ok=True)
+
+def ensure_dirs(*dirs: Path) -> None:
+    """Create the given directories (and parents) if they don't already exist."""
+    for directory in dirs:
+        directory.mkdir(parents=True, exist_ok=True)
 
 
 def convert_dcm_to_niix(dcm_dir: Path, niix_dir: Path, compress: bool = False) -> None:
@@ -37,8 +58,6 @@ def convert_dcm_to_niix(dcm_dir: Path, niix_dir: Path, compress: bool = False) -
     Raises:
         FileNotFoundError: If ``dcm2niix`` is not found in the system path.
     """
-    import subprocess
-
     # Check if dcm2niix is available
     if not shutil.which("dcm2niix"):
         raise FileNotFoundError(
@@ -59,7 +78,7 @@ def convert_dcm_to_niix(dcm_dir: Path, niix_dir: Path, compress: bool = False) -
         str(niix_dir),
         str(dcm_dir),
     ]
-    print(f"Converting DICOM to NIfTI: {' '.join(command)}")
+    logger.info("Converting DICOM to NIfTI: %s", " ".join(command))
     subprocess.run(command, check=True)
 
 
@@ -120,12 +139,12 @@ def find_mprage(niix_dir=NIIX_DIR, prefer_no_correction=False) -> list[Path]:
     #  print found sidecars
     if len(mprage_json_sidecars) > 0:
         for mprage_json_sidecar in mprage_json_sidecars:
-            print(f"Found MPRAGE JSON sidecar: {mprage_json_sidecar}")
+            logger.info("Found MPRAGE JSON sidecar: %s", mprage_json_sidecar)
 
             # Check if the corresponding NIfTI file exists
             nii_file = mprage_json_sidecar.with_suffix(".nii")
 
-            print(f"Checking for corresponding NIfTI file: {nii_file}")
+            logger.info("Checking for corresponding NIfTI file: %s", nii_file)
 
             if not nii_file.exists():
                 raise FileNotFoundError(
@@ -134,21 +153,36 @@ def find_mprage(niix_dir=NIIX_DIR, prefer_no_correction=False) -> list[Path]:
 
             nii_files.append(nii_file)
 
-            print(f"Found MPRAGE anatomical scan: {nii_file}")
+            logger.info("Found MPRAGE anatomical scan: %s", nii_file)
 
         return nii_files
     else:
         raise FileNotFoundError(f"No MPRAGE anatomical scan found in {niix_dir}")
 
 
-def get_img() -> tuple[Nifti1Image, np.ndarray[Any], Path]:
-    """Load a NIfTI file and return the image object."""
-    # Find the MPRAGE anatomical scan in the niix directory.
-    mprage_nii_files = find_mprage()
-    MPRAGE = mprage_nii_files[0]
+def get_img(index: int = 0) -> tuple[Nifti1Image, np.ndarray, Path]:
+    """Load an MPRAGE NIfTI file and return the image, its data array, and path.
 
-    # Configure the output directory for STL files.
-    STL_OUT_DIR.mkdir(exist_ok=True)
+    Args:
+        index: Which MPRAGE scan to load when more than one is found.
+            Defaults to the first (``0``).
+
+    Raises:
+        IndexError: If ``index`` is out of range for the MPRAGE scans found.
+    """
+    # Find the MPRAGE anatomical scan(s) in the niix directory.
+    mprage_nii_files = find_mprage()
+
+    if len(mprage_nii_files) > 1:
+        logger.warning(
+            "Found %d MPRAGE scans; using index %d (%s). "
+            "Pass a different index to select another.",
+            len(mprage_nii_files),
+            index,
+            mprage_nii_files[index].name,
+        )
+
+    MPRAGE = mprage_nii_files[index]
 
     img = cast(Nifti1Image, nib.load(MPRAGE))
 
@@ -156,11 +190,11 @@ def get_img() -> tuple[Nifti1Image, np.ndarray[Any], Path]:
 
     zooms = img.header.get_zooms()
 
-    print(f"File:        {MPRAGE.name}")
-    print(f"Shape:       {img.shape}  (X, Y, Z)")
-    print(f"Voxel size:  {tuple(round(z, 2) for z in zooms[:3])} mm")
-    print(f"Orientation: {''.join(nib.aff2axcodes(img.affine))}")
-    print(f"Intensity:   min={data.min():.0f}  max={data.max():.0f}")
+    logger.info("File:        %s", MPRAGE.name)
+    logger.info("Shape:       %s  (X, Y, Z)", img.shape)
+    logger.info("Voxel size:  %s mm", tuple(round(z, 2) for z in zooms[:3]))
+    logger.info("Orientation: %s", "".join(nib.aff2axcodes(img.affine)))
+    logger.info("Intensity:   min=%.0f  max=%.0f", data.min(), data.max())
 
     return img, data, MPRAGE
 
@@ -189,6 +223,7 @@ def generate_3way_viewer() -> None:
     )
 
     # Optionally save a standalone HTML file you can open in any browser:
+    ensure_dirs(HTML_OUT_DIR)
     output_path = HTML_OUT_DIR / "mprage_viewer.html"
     html_view.save_as_html(output_path)
 
@@ -204,7 +239,7 @@ def get_user_input() -> Path:
     directory is assumed to be ``niix`` in the current working directory.
 
     Returns:
-        A tuple of ``(dcm_dir, niix_dir)`` as :class:`~pathlib.Path` objects.
+        The selected DICOM directory as a :class:`~pathlib.Path`.
 
     Raises:
         ValueError: If the user cancels the dialog without selecting a folder.
@@ -219,7 +254,7 @@ def get_user_input() -> Path:
     if not dcm_dir:
         root.destroy()
         raise ValueError("No DICOM directory selected.")
-    print(f"Selected DICOM directory: {dcm_dir}")
+    logger.info("Selected DICOM directory: %s", dcm_dir)
 
     root.destroy()
 
@@ -227,9 +262,10 @@ def get_user_input() -> Path:
 
 
 def main():
+    setup_logging()
     niix_dir = Path("niix")
     mprage_nii_files = find_mprage(niix_dir)
-    print(f"MPRAGE NIfTI files: {mprage_nii_files}")
+    logger.info("MPRAGE NIfTI files: %s", mprage_nii_files)
 
 
 if __name__ == "__main__":

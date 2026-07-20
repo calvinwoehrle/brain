@@ -1,25 +1,113 @@
 {
   "version": "2.0.0",
+  "presentation": {
+    "reveal": "always",
+    "panel": "dedicated",
+    "clear": true
+  },
   "tasks": [
     {
-      "label": "typecheck",
+      "label": "sync",
+      "detail": "Install/sync dependencies from the lockfile",
       "type": "shell",
-      "command": "uv run ty check .",
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
+      "command": "uv sync",
+      "problemMatcher": []
     },
     {
       "label": "format",
+      "detail": "Format code with ruff",
       "type": "shell",
       "command": "uv run ruff format .",
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
+      "problemMatcher": []
+    },
+    {
+      "label": "lint",
+      "detail": "Lint code with ruff",
+      "type": "shell",
+      "command": "uv run ruff check .",
+      "problemMatcher": {
+        "owner": "ruff",
+        "source": "ruff",
+        "fileLocation": ["autoDetect", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(.+):(\\d+):(\\d+): (\\w+) (.+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "code": 4,
+          "message": 5
+        }
       }
+    },
+    {
+      "label": "typecheck",
+      "detail": "Type-check code with ty",
+      "type": "shell",
+      "command": "uv run ty check .",
+      "problemMatcher": {
+        "owner": "ty",
+        "source": "ty",
+        "fileLocation": ["autoDetect", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(error|warning)\\[(.+)\\]: (.+)$",
+          "severity": 1,
+          "code": 2,
+          "message": 3
+        }
+      }
+    },
+    {
+      "label": "check",
+      "detail": "Run lint and type checks",
+      "dependsOrder": "sequence",
+      "dependsOn": ["lint", "typecheck"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "fix",
+      "detail": "Auto-fix lint issues, format, then type-check",
+      "type": "shell",
+      "command": "uv run ruff check --fix . && uv run ruff format . && uv run ty check .",
+      "problemMatcher": []
+    },
+    {
+      "label": "build",
+      "detail": "Build the wheel and sdist into dist/",
+      "type": "shell",
+      "command": "uv build",
+      "dependsOn": ["check"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "version: show",
+      "detail": "Show the current project version",
+      "type": "shell",
+      "command": "uv version",
+      "problemMatcher": []
+    },
+    {
+      "label": "version: bump",
+      "detail": "Increment the project version (patch/minor/major)",
+      "type": "shell",
+      "command": "uv version --bump ${input:bumpLevel}",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "bumpLevel",
+      "type": "pickString",
+      "description": "Which part of the version to increment?",
+      "default": "patch",
+      "options": ["patch", "minor", "major"]
     }
   ]
 }
