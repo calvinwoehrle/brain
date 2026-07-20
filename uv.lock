@@ -487,8 +487,8 @@ nvtx = [
 ]
 
 [[package]]
-name = "cwoehrle-mri"
-version = "1.0.0"
+name = "cwoehrle-brain"
+version = "1.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "dcm2niix" },

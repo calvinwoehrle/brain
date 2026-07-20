@@ -1,6 +1,6 @@
 [project]
-name = "cwoehrle.mri"
-version = "1.0.0"
+name = "cwoehrle.brain"
+version = "1.0.1"
 description = "MRI processing and 3D brain mesh visualization from DICOM/NIfTI scans"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -36,15 +36,14 @@ dev = [
 ]
 
 [project.scripts]
-mri = "cwoehrle.mri.main:main"
-convert = "cwoehrle.mri.main:run_conversion"
-brain = "cwoehrle.mri.main:run_brain_extraction"
-3way = "cwoehrle.mri.main:run_3way_viewer"
+mri = "cwoehrle.brain.main:main"
+convert = "cwoehrle.brain.main:run_conversion"
+brain = "cwoehrle.brain.main:run_brain_extraction"
+3way = "cwoehrle.brain.main:run_3way_viewer"
 
 [project.urls]
-Homepage = "https://github.com/cwoehrle/MRI"
-Repository = "https://github.com/cwoehrle/MRI"
-Issues = "https://github.com/cwoehrle/MRI/issues"
+Homepage = "https://github.com/cwoehrle/brain"
+Repository = "https://github.com/cwoehrle/brian"
 
 
 [build-system]
