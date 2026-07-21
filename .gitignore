@@ -16,3 +16,6 @@ niix
 
 output
 .DS_Store
+
+# Legacy notebooks/scripts containing personal scan data (kept locally, not published)
+old
