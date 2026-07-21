@@ -28,8 +28,11 @@ logger = logging.getLogger(__name__)
 def n4_bias_field_correct(
     in_path: Path,
     out_path: Path,
-    shrink_factor: int = 4,
-    iters: tuple[int, ...] = (50, 50, 50, 50),
+    shrink_factor: int = 2,
+    iters: tuple[int, ...] = (100, 100, 100, 100, 100),
+    convergence: float = 1e-7,
+    histogram_bins: int = 256,
+    force: bool = False,
 ) -> Path:
     """Estimate and remove the low-frequency intensity bias field (SimpleITK N4).
 
@@ -37,7 +40,28 @@ def n4_bias_field_correct(
     breaks the simple percentile thresholds used downstream. N4 estimates and
     divides out that smooth bias field so a single threshold behaves consistently
     across the whole volume. The corrected image is written to ``out_path``.
+
+    Tuned for quality over speed: a small ``shrink_factor`` estimates the field
+    at close to full resolution, five resolution levels with 100 iterations each
+    plus a tight ``convergence`` threshold let the fit settle, and a finer
+    histogram sharpens the intensity deconvolution. This runs slower but yields a
+    cleaner, more uniform volume.
+
+    N4 is slow, so the corrected volume is cached: if ``out_path`` already exists
+    it is reused. Set ``force=True`` or delete the file to recompute.
     """
+    if out_path.exists() and not force:
+        logger.info("Using cached N4 result: %s", out_path)
+        return out_path
+
+    if not in_path.exists():
+        raise FileNotFoundError(f"N4 input image not found: {in_path}")
+
+    logger.info(
+        "Running N4 bias-field correction on %s; this may take a few minutes "
+        "(not frozen)...",
+        in_path.name,
+    )
     img = sitk.ReadImage(str(in_path), sitk.sitkFloat32)
     mask = sitk.OtsuThreshold(img, 0, 1, 200)
 
@@ -47,6 +71,8 @@ def n4_bias_field_correct(
 
     corrector = sitk.N4BiasFieldCorrectionImageFilter()
     corrector.SetMaximumNumberOfIterations(list(iters))
+    corrector.SetConvergenceThreshold(convergence)
+    corrector.SetNumberOfHistogramBins(histogram_bins)
     corrector.Execute(img_small, mask_small)
 
     log_bias = corrector.GetLogBiasFieldAsImage(img)
@@ -73,7 +99,7 @@ def run_hd_bet(
         logger.info("Using cached brain mask: %s", mask_path)
         return mask_path
 
-    hd_bet = shutil.which("hd-bet")
+    hd_bet = shutil.which(cmd="hd-bet")
     if hd_bet is None:
         raise RuntimeError("hd-bet CLI not found; run `uv sync` to install it.")
 
@@ -303,7 +329,6 @@ def main():
     # Interactive 3D head model (reuse the whole-head mesh from above).
     fig = build_head_figure(verts, faces)
     fig.write_html(str(brain_utils.HTML_OUT_DIR / "head_model.html"))
-    # fig.show()
 
     # Export all three meshes to STL (mm units, files land in STL_OUT_DIR).
     # Coordinates are in millimetres, so each print comes out life-size.

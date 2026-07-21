@@ -146,7 +146,7 @@ def find_mprage(niix_dir=NIIX_DIR, prefer_no_correction=False) -> list[Path]:
     # check if the niix_dir exists
     if not niix_dir.exists():
         raise FileNotFoundError(
-            f"Directory {niix_dir} does not exist. Please convert DICOM to NIfTI first using convert_dcm_to_niix()"
+            f"Directory {niix_dir} does not exist. Please convert DICOM to NIfTI first using uv `uv run convert <DICOM_DIR>`"
         )
 
     niix_json_sidecars = list(niix_dir.glob("*.json"))

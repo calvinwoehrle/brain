@@ -1,6 +1,6 @@
 [project]
 name = "cwoehrle.brain"
-version = "1.0.2"
+version = "1.1.0"
 description = "MRI processing and 3D brain mesh visualization from DICOM/NIfTI scans"
 readme = "README.md"
 requires-python = ">=3.14"

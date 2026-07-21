@@ -16,7 +16,6 @@ def export_stl(
     verts: np.ndarray,
     faces: np.ndarray,
     path: Path,
-    header: str = "MRI model - Calvin Woehrle",
 ) -> trimesh.Trimesh:
     """Build, repair and validate a triangle mesh, then write a binary STL (mm).
 
@@ -28,7 +27,6 @@ def export_stl(
         verts: ``(N, 3)`` array of vertex coordinates in millimetres.
         faces: ``(M, 3)`` array of triangle vertex indices.
         path: Destination ``.stl`` file path (not a directory).
-        header: Metadata header stored with the mesh.
 
     Returns:
         The repaired :class:`trimesh.Trimesh` that was written to ``path``.

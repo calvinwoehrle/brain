@@ -1,7 +1,7 @@
 import argparse
 import logging
 
-from . import BrainBuilder, convert
+from . import BrainBuilder, brain_stl, convert
 from . import brain_utils as mri
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,12 @@ def run_conversion(args: argparse.Namespace) -> None:
 
 
 def run_brain_extraction(args: argparse.Namespace) -> None:
-    """Run the brain extraction process. Generate STL and HTML outputs."""
+    """Run the streamlined brain-only STL path (HD-BET, no N4)."""
+    brain_stl.main()
+
+
+def run_full_extraction(args: argparse.Namespace) -> None:
+    """Run the full N4 pipeline: head + brain + skull STLs and HTML."""
     BrainBuilder.main()
 
 
@@ -50,9 +55,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     brain_parser = subparsers.add_parser(
         "brain",
-        help="Run brain extraction and generate STL and HTML outputs.",
+        help="Streamlined brain-only STL from the raw MPRAGE (HD-BET, no N4).",
     )
     brain_parser.set_defaults(func=run_brain_extraction)
+
+    full_parser = subparsers.add_parser(
+        "full",
+        help="Full N4 pipeline: head + brain + skull STLs and HTML.",
+    )
+    full_parser.set_defaults(func=run_full_extraction)
 
     viewer_parser = subparsers.add_parser(
         "3way",
