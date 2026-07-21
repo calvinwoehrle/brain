@@ -44,7 +44,7 @@ brain = "cwoehrle.brain.main:run_brain_extraction"
 
 [project.urls]
 Homepage = "https://github.com/cwoehrle/brain"
-Repository = "https://github.com/cwoehrle/brian"
+Repository = "https://github.com/cwoehrle/brain"
 
 
 [build-system]

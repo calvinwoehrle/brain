@@ -1,14 +1,13 @@
-# %% [markdown]
-# # Generate a STL from MPRAGE Anatomical Brain data
-#
-# Calvin Woehrle
-#
-# July 1, 2026
+"""Generate an STL from MPRAGE anatomical brain data.
 
-# %%
+Calvin Woehrle
+July 1, 2026
+"""
+
 import logging
 import shutil
 import subprocess
+import sys
 from typing import cast
 
 import nibabel as nib
@@ -21,30 +20,45 @@ import trimesh
 from nibabel.nifti1 import Nifti1Image
 from scipy import ndimage
 
-from . import mri_utils as mri
+from . import brain_utils
 
 logger = logging.getLogger(__name__)
 
 
+def _select_device() -> str:
+    """Pick the best available HD-BET device for the current machine.
+
+    - macOS: always uses Apple's Metal backend (``mps``).
+    - Windows / Linux: uses CUDA (``cuda``) when an NVIDIA GPU is available,
+      otherwise falls back to ``cpu``.
+    """
+    if sys.platform == "darwin":
+        return "mps"
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            return "cuda"
+    except Exception:  # noqa: BLE001 - torch missing or CUDA probe failed
+        pass
+    return "cpu"
+
+
 def main():
 
-    mri.setup_logging()
-    mri.ensure_dirs(mri.BIN_DIR, mri.STL_OUT_DIR, mri.HTML_OUT_DIR)
+    brain_utils.setup_logging()
+    brain_utils.ensure_dirs(brain_utils.BIN_DIR, brain_utils.STL_OUT_DIR, brain_utils.HTML_OUT_DIR)
 
-    img, data, MPRAGE = mri.get_img()
+    img, data, MPRAGE = brain_utils.get_img()
 
-    # %% [markdown]
-    # ## Intensity uniformity (N4 bias-field correction)
+    # Intensity uniformity (N4 bias-field correction)
     #
     # MRI surface coils make one side of the head brighter than the other, which
-    # breaks the simple percentile thresholds used below. **SimpleITK's N4** estimates
+    # breaks the simple percentile thresholds used below. SimpleITK's N4 estimates
     # and divides out that smooth bias field so a single threshold behaves
     # consistently across the whole volume. The corrected image is saved as a
-    # `.nii.gz` and reloaded so the rest of the notebook works in one voxel space.
-    #
-
-    # %%
-    MPRAGE_N4 = mri.BIN_DIR / "mprage_n4.nii.gz"
+    # `.nii.gz` and reloaded so the rest of the pipeline works in one voxel space.
+    MPRAGE_N4 = brain_utils.BIN_DIR / "mprage_n4.nii.gz"
 
     def n4_bias_field_correct(
         in_path, out_path, shrink_factor=4, iters=(50, 50, 50, 50)
@@ -80,19 +94,15 @@ def main():
     )
     logger.info("Intensity:    min=%.0f  max=%.0f", data_n4.min(), data_n4.max())
 
-    # %% [markdown]
-    # ## Brain extraction with HD-BET
+    # Brain extraction with HD-BET
     #
-    # The erode/dilate trick previously used to strip the skull is fragile. **HD-BET**
+    # The erode/dilate trick previously used to strip the skull is fragile. HD-BET
     # (MIC-DKFZ) is a neural-network brain-extraction tool that produces an
     # accurate brain mask across MRI contrasts. It runs on the N4-corrected image and
     # writes a binary mask, which we load as `brain_mask`. The first run downloads the
     # model weights.
-    #
-
-    # %%
-    BRAIN_OUT = mri.BIN_DIR / "mprage_brain.nii.gz"
-    BRAIN_MASK = mri.BIN_DIR / "mprage_brain_bet.nii.gz"  # cached HD-BET result
+    BRAIN_OUT = brain_utils.BIN_DIR / "mprage_brain.nii.gz"
+    BRAIN_MASK = brain_utils.BIN_DIR / "mprage_brain_bet.nii.gz"  # cached HD-BET result
 
     def run_hd_bet(in_path, out_path, mask_path, device="cpu", force=False):
         """Run HD-BET brain extraction, caching the mask so it only runs once.
@@ -129,13 +139,12 @@ def main():
             raise FileNotFoundError("HD-BET did not produce a mask file.")
         return masks[0]
 
-    mask_path = run_hd_bet(MPRAGE_N4, BRAIN_OUT, BRAIN_MASK, device="mps")
+    mask_path = run_hd_bet(MPRAGE_N4, BRAIN_OUT, BRAIN_MASK, device=_select_device())
     brain_mask = np.asarray(cast(Nifti1Image, nib.load(mask_path)).dataobj) > 0
     logger.info(
         "Brain mask: %s voxels  from %s", f"{int(brain_mask.sum()):,}", mask_path.name
     )
 
-    # %%
     # Use spacing to consider original voxel size when generating the mesh.
     spacing = tuple(float(z) for z in zooms[:3])
 
@@ -248,16 +257,12 @@ def main():
         f"{len(faces_skull):,}",
     )
 
-    # %% [markdown]
-    # ## Interactive 3D head model
+    # Interactive 3D head model
     #
-    # The whole-head surface above is a static render. Here the same marching-cubes
-    # mesh (`verts`, `faces`) is drawn with **Plotly**, so you can **click-drag to
-    # rotate**, scroll to zoom, and right-drag to pan the model in real time.
-    #
-
-    # %%
-    # Reuse the whole-head mesh from the marching-cubes cell above.
+    # The same marching-cubes mesh (`verts`, `faces`) is drawn with Plotly, so you
+    # can click-drag to rotate, scroll to zoom, and right-drag to pan the model in
+    # real time.
+    # Reuse the whole-head mesh from the marching-cubes step above.
     x, y, z = verts.T
     i, j, k = faces.T
 
@@ -291,20 +296,16 @@ def main():
     )
 
     # Optionally save a standalone, shareable HTML file:
-    fig.write_html(str(mri.HTML_OUT_DIR / "head_model.html"))
+    fig.write_html(str(brain_utils.HTML_OUT_DIR / "head_model.html"))
 
     # fig.show()
 
-    # %% [markdown]
-    # ## Export to STL
+    # Export to STL
     #
     # The marching-cubes mesh (`verts`, `faces`) is already a watertight triangle
-    # surface, so it can be written directly to an **STL** file for 3D printing or
+    # surface, so it can be written directly to an STL file for 3D printing or
     # viewing in any CAD/mesh tool. Coordinates are in millimetres, so the print
     # comes out life-size.
-    #
-
-    # %%
     def export_stl(verts, faces, path, header="MRI model - Calvin Woehrle"):
         """Build, repair and validate a triangle mesh, then write a binary STL (mm).
 
@@ -323,7 +324,6 @@ def main():
         mesh.export(path)  # extension (.stl) selects the exporter
         return mesh
 
-    # %%
     # ============== Outputs ================
 
     # ============ Export all three meshes to STL ============
@@ -335,7 +335,7 @@ def main():
     }
 
     for name, (v, f) in meshes.items():
-        out_path = mri.STL_OUT_DIR / f"{name}.stl"
+        out_path = brain_utils.STL_OUT_DIR / f"{name}.stl"
         mesh = export_stl(v, f, path=out_path)
         logger.info(
             "Wrote %s: %s triangles, %s vertices, watertight=%s",
