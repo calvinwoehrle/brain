@@ -6,6 +6,24 @@ from . import brain_utils as mri
 
 logger = logging.getLogger(__name__)
 
+BANNER = r"""
++--------------------------------------------------------------+
+|                   Calvin Woehrle - Brain                     |
+|       MRI processing & 3D brain mesh visualization           |
+|                                                              |
+|   Author : Calvin Woehrle                                    |
+|   Email  : code@calvinwoehrle.com                            |
+|   GitHub : https://github.com/calvinwoehrle                  |
+|                                                              |
+|   (c) 2026 Calvin Woehrle. All rights reserved.              |
++--------------------------------------------------------------+
+"""
+
+
+def print_banner() -> None:
+    """Print the project credit/contact header."""
+    print(BANNER)
+
 
 def run_conversion(args: argparse.Namespace) -> None:
     """Run the DICOM to NIfTI conversion process."""
@@ -76,6 +94,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main():
     """Entry point for the MRI project."""
+    print_banner()
     mri.setup_logging()
     parser = build_parser()
     args = parser.parse_args()
