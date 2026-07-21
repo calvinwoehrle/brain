@@ -2,9 +2,9 @@ import json
 import logging
 import shutil
 import subprocess
+import sys
 import webbrowser
 from pathlib import Path
-from tkinter import Tk, filedialog
 from typing import cast
 
 import nibabel as nib
@@ -13,6 +13,15 @@ from nibabel.nifti1 import Nifti1Image
 from nilearn import plotting
 
 logger = logging.getLogger(__name__)
+
+# Default directories
+NIIX_DIR = Path("niix")
+
+BIN_DIR = Path("bin")
+
+OUTPUT_DIR = Path("output")
+STL_OUT_DIR = OUTPUT_DIR / "STL"
+HTML_OUT_DIR = OUTPUT_DIR / "HTML"
 
 
 def setup_logging(level: int = logging.INFO) -> None:
@@ -30,20 +39,46 @@ def setup_logging(level: int = logging.INFO) -> None:
     )
 
 
-# Default directories
-NIIX_DIR = Path("niix")
-
-BIN_DIR = Path("bin")
-
-OUTPUT_DIR = Path("output")
-STL_OUT_DIR = OUTPUT_DIR / "STL"
-HTML_OUT_DIR = OUTPUT_DIR / "HTML"
-
-
 def ensure_dirs(*dirs: Path) -> None:
     """Create the given directories (and parents) if they don't already exist."""
     for directory in dirs:
         directory.mkdir(parents=True, exist_ok=True)
+
+
+def clear_dir(directory: Path, confirm: bool = True) -> None:
+    """Delete all contents of a directory, optionally after user confirmation.
+
+    Prompts the user before deleting anything when ``confirm`` is ``True``. If
+    the directory doesn't exist or is already empty, this is a no-op.
+
+    Args:
+        directory: The directory whose contents should be removed.
+        confirm: Whether to ask the user for permission before deleting.
+            Defaults to ``True``.
+    """
+    if not directory.exists():
+        return
+
+    entries = list(directory.iterdir())
+    if not entries:
+        return
+
+    if confirm:
+        response = (
+            input(f"Clear {len(entries)} existing item(s) from {directory}? [y/N] ")
+            .strip()
+            .lower()
+        )
+        if response not in ("y", "yes"):
+            logger.info("Keeping existing contents of %s.", directory)
+            return
+
+    for entry in entries:
+        if entry.is_dir():
+            shutil.rmtree(entry)
+        else:
+            entry.unlink()
+    logger.info("Cleared contents of %s.", directory)
 
 
 def convert_dcm_to_niix(dcm_dir: Path, niix_dir: Path, compress: bool = False) -> None:
@@ -232,33 +267,23 @@ def generate_3way_viewer() -> None:
     webbrowser.open_new_tab(output_path.resolve().as_uri())
 
 
-def get_user_input() -> Path:
-    """Prompt the user to pick the DICOM input directory.
+def select_device() -> str:
+    """Pick the best available HD-BET device for the current machine.
 
-    Opens a native folder-selection dialog using tkinter. The NIfTI output
-    directory is assumed to be ``niix`` in the current working directory.
-
-    Returns:
-        The selected DICOM directory as a :class:`~pathlib.Path`.
-
-    Raises:
-        ValueError: If the user cancels the dialog without selecting a folder.
+    - macOS: always uses Apple's Metal backend (``mps``).
+    - Windows / Linux: uses CUDA (``cuda``) when an NVIDIA GPU is available,
+      otherwise falls back to ``cpu``.
     """
-    # Hide the empty root window that tkinter creates.
-    root = Tk()
-    root.withdraw()
+    if sys.platform == "darwin":
+        return "mps"
+    try:
+        import torch
 
-    dcm_dir = filedialog.askdirectory(
-        title="Select the DICOM directory", initialdir=Path.home() / "Downloads"
-    )
-    if not dcm_dir:
-        root.destroy()
-        raise ValueError("No DICOM directory selected.")
-    logger.info("Selected DICOM directory: %s", dcm_dir)
-
-    root.destroy()
-
-    return Path(dcm_dir)
+        if torch.cuda.is_available():
+            return "cuda"
+    except Exception:  # noqa: BLE001 - torch missing or CUDA probe failed
+        pass
+    return "cpu"
 
 
 def main():

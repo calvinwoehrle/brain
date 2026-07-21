@@ -37,10 +37,7 @@ dev = [
 ]
 
 [project.scripts]
-mri = "cwoehrle.brain.main:main"
-convert = "cwoehrle.brain.main:run_conversion"
-brain = "cwoehrle.brain.main:run_brain_extraction"
-3way = "cwoehrle.brain.main:run_3way_viewer"
+brain = "cwoehrle.brain.main:main"
 
 [project.urls]
 Homepage = "https://github.com/cwoehrle/brain"

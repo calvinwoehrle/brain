@@ -68,3 +68,8 @@ All scripts use Python's `logging` module. Progress messages are printed at
 `INFO` level by default; the level can be adjusted via
 `cwoehrle.brain.mri_utils.setup_logging()`.
 
+
+
+
+
+uv run convert<PATH_TO_DICOM_FOLDER>
